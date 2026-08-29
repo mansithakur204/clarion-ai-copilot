@@ -1,0 +1,133 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String
+  passwordHash String        @default("")
+  role         String        @default("USER")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  documents    Document[]
+  tasks        Task[]
+  auditLogs    AuditLog[]
+  settings     UserSettings?
+  chatMessages ChatMessage[]
+}
+
+model UserSettings {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selectedProvider String   @default("auto") // auto, gemini, mock
+  geminiApiKey     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ChatMessage {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId         String   @default("default-session")
+  role              String   // "user" | "assistant"
+  content           String
+  intent            String?
+  toolsUsedJson     String?  // JSON stringified string[]
+  pendingActionJson String?  // JSON stringified pending action
+  createdAt         DateTime @default(now())
+}
+
+model Document {
+  id               String              @id @default(uuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  originalFilename String
+  mimeType         String
+  fileSize         Int
+  category         String              @default("OTHER") // BILL, NOTICE, CONTRACT, STATEMENT, TAX, HEALTHCARE, OTHER
+  status           String              @default("PENDING_ANALYSIS") // PENDING_ANALYSIS, ANALYSIS_COMPLETE, VERIFICATION_REQUIRED, VERIFIED, ARCHIVED
+  contentSummary   String?
+  rawContent       String?
+  riskLevel        String              @default("LOW") // LOW, MEDIUM, HIGH, URGENT
+  extractedData    DocumentExtraction?
+  deadlines        Deadline[]
+  tasks            Task[]
+  auditLogs        AuditLog[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model DocumentExtraction {
+  id                   String    @id @default(uuid())
+  documentId           String    @unique
+  document             Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  issuer               String?
+  accountNumber        String?
+  totalAmount          Float?
+  currency             String    @default("USD")
+  issueDate            String?
+  dueDate              String?
+  plainLanguageSummary String
+  priorityScore        Int       @default(1) // 1 (Low) to 5 (Critical)
+  keyTakeawaysJson     String // JSON Array of bullet points
+  actionItemsJson      String // JSON Array of required actions
+  questionsJson        String // JSON Array of clarification/uncertainty questions
+  confidenceScore      Float     @default(0.95) // AI Confidence (0.0 to 1.0)
+  humanVerified        Boolean   @default(false)
+  verifiedAt           DateTime?
+  verifiedBy           String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model Deadline {
+  id          String   @id @default(uuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  title       String
+  dueDate     DateTime
+  severity    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  isCompleted Boolean  @default(false)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId     String?
+  document       Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  title          String
+  description    String?
+  actionType     String    @default("GENERAL") // PAYMENT, CANCEL_SUBSCRIPTION, DISPUTE, RENEWAL, SUBMIT_FORM, VERIFICATION
+  priority       String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status         String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, DISMISSED
+  dueDate        DateTime?
+  humanConfirmed Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model AuditLog {
+  id         String    @id @default(uuid())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  action     String // e.g., DOCUMENT_UPLOADED, AI_ANALYSIS_STARTED, AI_ANALYSIS_COMPLETED, FIELD_VERIFIED, TASK_CREATED
+  actor      String    @default("AI_SYSTEM") // AI_SYSTEM, USER
+  details    String // JSON or plain text details
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+}
