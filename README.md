@@ -1,4 +1,4 @@
-# 🚀 Clarion AI — Autonomous AI-Life-Admin-Copilot
+﻿# 🚀 Clarion AI — Autonomous AI-Life-Admin-Copilot
 
 > Privacy-first, proactive administrative assistant for bills, documents, tasks, and deadlines.
 
