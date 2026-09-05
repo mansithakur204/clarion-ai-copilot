@@ -1,10 +1,12 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 model User {
@@ -20,6 +22,7 @@ model User {
   auditLogs    AuditLog[]
   settings     UserSettings?
   chatMessages ChatMessage[]
+  chunks       DocumentChunk[]
 }
 
 model UserSettings {
@@ -55,6 +58,7 @@ model Document {
   fileSize         Int
   category         String              @default("OTHER") // BILL, NOTICE, CONTRACT, STATEMENT, TAX, HEALTHCARE, OTHER
   status           String              @default("PENDING_ANALYSIS") // PENDING_ANALYSIS, ANALYSIS_COMPLETE, VERIFICATION_REQUIRED, VERIFIED, ARCHIVED
+  indexingStatus   String              @default("PENDING") // PENDING, INDEXING, INDEXED, FAILED
   contentSummary   String?
   rawContent       String?
   riskLevel        String              @default("LOW") // LOW, MEDIUM, HIGH, URGENT
@@ -62,6 +66,7 @@ model Document {
   deadlines        Deadline[]
   tasks            Task[]
   auditLogs        AuditLog[]
+  chunks           DocumentChunk[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 }
@@ -130,4 +135,21 @@ model AuditLog {
   details    String // JSON or plain text details
   ipAddress  String?
   createdAt  DateTime  @default(now())
+}
+
+model DocumentChunk {
+  id          String   @id @default(uuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunkIndex  Int
+  content     String   @db.Text
+  startChar   Int
+  endChar     Int
+  embedding   Unsupported("vector(768)")?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([documentId])
 }

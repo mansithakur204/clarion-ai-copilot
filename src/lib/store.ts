@@ -3,6 +3,7 @@ import { getActiveAIProvider } from "./ai";
 import { SAMPLE_DOCUMENTS } from "./sampleDocs";
 import { normalizeDateToISO } from "./dateUtils";
 import { PrismaClient } from "@prisma/client";
+import { runDocumentIndexingPipeline } from "./rag/pipeline";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -196,11 +197,12 @@ class ClarionStore {
 
   // --- USER AUTH & DB METHODS ---
 
-  public async createUser(name: string, email: string, passwordHash: string): Promise<UserRecord> {
+  public async createUser(name: string, email: string, passwordHash: string, id?: string): Promise<UserRecord> {
     const cleanEmail = email.trim().toLowerCase();
     try {
       const dbUser = await prisma.user.create({
         data: {
+          id,
           name,
           email: cleanEmail,
           passwordHash
@@ -301,6 +303,7 @@ class ClarionStore {
       fileSize: rawText.length,
       category: analysis.category || category,
       status: "VERIFICATION_REQUIRED",
+      indexingStatus: "PENDING",
       riskLevel: analysis.riskLevel,
       contentSummary: analysis.plainLanguageSummary,
       rawContent: rawText,
@@ -382,6 +385,26 @@ class ClarionStore {
       `Processed via ${providerLabel}. Resulted in category ${newDoc.category} and risk level ${newDoc.riskLevel}.`,
       userId
     );
+
+    // Trigger non-blocking Document Indexing Pipeline (PENDING -> INDEXING -> INDEXED / FAILED)
+    runDocumentIndexingPipeline(newDocId, userId, rawText)
+      .then((result) => {
+        newDoc.indexingStatus = result.status;
+        this.addAuditLog(
+          newDoc.id,
+          newDoc.title,
+          result.success ? "RAG_INDEXING_COMPLETE" : "RAG_INDEXING_FAILED",
+          "AI_SYSTEM",
+          result.success
+            ? `Successfully indexed ${result.chunksIndexed} chunks into vector store.`
+            : `Indexing failed: ${result.error || "Unknown error"}`,
+          userId
+        );
+      })
+      .catch((err) => {
+        newDoc.indexingStatus = "FAILED";
+        console.warn(`[Store Indexing Error] ${newDocId}:`, err?.message || err);
+      });
 
     return newDoc;
   }

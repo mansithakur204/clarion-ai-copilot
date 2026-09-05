@@ -29,6 +29,8 @@ export type DocumentStatus =
   | "VERIFIED"
   | "ARCHIVED";
 
+export type DocumentIndexingStatus = "PENDING" | "INDEXING" | "INDEXED" | "FAILED";
+
 export interface ExtractedFact {
   field: string;
   value: string;
@@ -91,6 +93,7 @@ export interface DocumentRecord {
   fileSize: number;
   category: CategoryType;
   status: DocumentStatus;
+  indexingStatus?: DocumentIndexingStatus;
   riskLevel: RiskLevel;
   contentSummary?: string;
   rawContent?: string;

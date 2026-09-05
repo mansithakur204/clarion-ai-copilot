@@ -2,6 +2,7 @@ import { clarionStore } from "../store";
 import { DocumentRecord, TaskRecord, TaskPriority, ActionType } from "../types";
 import { isValidDate } from "../dateUtils";
 import { EmailDraft } from "./types";
+import { searchVectorStore, VectorSearchResult } from "../rag/search";
 
 export interface UrgentItemResult {
   urgentDocuments: DocumentRecord[];
@@ -112,19 +113,20 @@ export const agentTools = {
 
     const q = queryOrId.toLowerCase().trim();
 
-    let match = docs.find((d) => d.id === queryOrId);
+    let match = docs.find((d) => d.id === queryOrId || d.id === q);
     if (match) return match;
 
     match = docs.find(
       (d) =>
         d.title.toLowerCase().includes(q) ||
+        q.includes(d.title.toLowerCase()) ||
         d.originalFilename.toLowerCase().includes(q) ||
-        (d.extraction?.issuer && d.extraction.issuer.toLowerCase().includes(q)) ||
-        (d.extraction?.subject && d.extraction.subject.toLowerCase().includes(q)) ||
+        (d.extraction?.issuer && (d.extraction.issuer.toLowerCase().includes(q) || q.includes(d.extraction.issuer.toLowerCase()))) ||
+        (d.extraction?.subject && (d.extraction.subject.toLowerCase().includes(q) || q.includes(d.extraction.subject.toLowerCase()))) ||
         (d.extraction?.documentType && d.extraction.documentType.toLowerCase().includes(q))
     );
 
-    return match || docs[0];
+    return match;
   },
 
   /**
@@ -205,5 +207,18 @@ export const agentTools = {
       body: params.body,
       documentId: params.documentId
     };
+  },
+
+  /**
+   * RAG Vector Search Tool 10: searchDocumentKnowledge(query, userId)
+   */
+  async searchDocumentKnowledge(query: string, userId?: string): Promise<VectorSearchResult[]> {
+    if (!userId) return [];
+    try {
+      return await searchVectorStore(userId, query, 4);
+    } catch (err) {
+      console.warn("[searchDocumentKnowledge Error]", err);
+      return [];
+    }
   }
 };

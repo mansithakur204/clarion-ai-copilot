@@ -35,6 +35,10 @@ export interface PendingAction {
   timestamp: string;
   documentId?: string;
   documentTitle?: string;
+  status?: "PENDING" | "CONFIRMED" | "CANCELLED" | "EXECUTED" | "EXPIRED";
+  reason?: string;
+  suggestedAction?: string;
+  executedTaskId?: string;
 }
 
 export interface EmailDraft {
@@ -52,6 +56,37 @@ export interface AgentTraceStep {
   status: "COMPLETED" | "RUNNING" | "FAILED";
 }
 
+export interface DocumentSourceCitation {
+  documentId: string;
+  documentTitle: string;
+  category: string;
+  chunkIndex: number;
+  snippet: string;
+  similarity: number;
+}
+
+export interface SmartRecommendation {
+  id: string;
+  title: string;          // What needs attention
+  reason: string;         // Why
+  suggestedAction: string; // Recommended next step
+  actionType?: ActionIntentType | ActionType;
+  actionArgs?: Record<string, any>;
+  sourceDocumentId?: string;
+  sourceDocumentTitle?: string;
+  category?: string;
+  dueDate?: string;
+  amount?: number;
+  priority?: TaskPriority;
+  status?: "RECOMMENDED" | "PENDING_CONFIRMATION" | "COMPLETED" | "CANCELLED";
+  executedTaskId?: string;
+}
+
+export interface SmartDecision {
+  facts: string[];
+  recommendations: SmartRecommendation[];
+}
+
 export interface AgentMessage {
   id: string;
   sender: "USER" | "AI";
@@ -61,6 +96,9 @@ export interface AgentMessage {
   activeEntity?: string;
   pendingAction?: PendingAction;
   emailDraft?: EmailDraft;
+  sources?: DocumentSourceCitation[];
+  facts?: string[];
+  recommendations?: SmartRecommendation[];
 }
 
 export interface ConversationContext {
@@ -81,6 +119,9 @@ export interface AgentResponse {
   toolsUsed: string[];
   pendingAction?: PendingAction;
   emailDraft?: EmailDraft;
+  sources?: DocumentSourceCitation[];
+  facts?: string[];
+  recommendations?: SmartRecommendation[];
 }
 
 export interface AgentTool {

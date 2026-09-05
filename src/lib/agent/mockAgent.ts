@@ -1,8 +1,9 @@
 import { agentTools } from "./tools";
-import { AgentResponse, AgentTraceStep, IntentType, EmailDraft, PendingAction } from "./types";
+import { AgentResponse, AgentTraceStep, IntentType, EmailDraft, PendingAction, DocumentSourceCitation } from "./types";
 import { SessionMemory } from "./memory";
 import { clarionStore } from "../store";
 import { formatDateForDisplay } from "../dateUtils";
+import { globalSmartDecisionEngine } from "./decisionEngine";
 
 export class MockAgentEngine {
   async processQuery(
@@ -102,7 +103,8 @@ export class MockAgentEngine {
     }
 
     // 1. High-Priority Action Intent Detection (CREATE_TASK, COMPLETE_TASK, CREATE_REMINDER, DRAFT_EMAIL)
-    const isCreateTask = /create\s+(a\s+)?task|add\s+(a\s+)?task|make\s+(a\s+)?task|new\s+task|remind\s+me\s+to\s+create\s+a\s+task/i.test(qLower);
+    const isRecommendationAction = !pendingAction && /\b(do that|do this|handle that|take care of that|action that|do it)\b/i.test(qLower);
+    const isCreateTask = isRecommendationAction || /create\s+(a\s+)?task|add\s+(a\s+)?task|make\s+(a\s+)?task|new\s+task|remind\s+me\s+to\s+create\s+a\s+task/i.test(qLower);
     const isCompleteTask = /mark\s+.*?\s+as\s+(complete|done|finished)|complete\s+(the\s+)?.*?|finish\s+(the\s+)?.*?|done\s+with\s+(the\s+)?.*?/i.test(qLower);
     const isCreateReminder = /remind\s+me\s+to|remind\s+me\s+about|set\s+(a\s+)?reminder|create\s+(a\s+)?reminder/i.test(qLower);
     const isDraftEmail = /draft\s+(an?\s+)?email|write\s+(an?\s+)?email|compose\s+(an?\s+)?email/i.test(qLower);
@@ -121,7 +123,10 @@ export class MockAgentEngine {
         rawTitle = rawTitle.replace(/\s*today\b/gi, "").trim();
       }
 
-      if (rawTitle.length > 0) {
+      if (isRecommendationAction || /^(do that|do this|do it|take care of that|handle that)$/i.test(rawTitle)) {
+        const activeEntity = SessionMemory.resolveFollowUpEntity("it", sessionId);
+        rawTitle = activeEntity ? `Pay ${activeEntity}` : "Pay recommended utility bill";
+      } else if (rawTitle.length > 0) {
         rawTitle = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
       } else {
         rawTitle = "Review project details";
@@ -406,7 +411,8 @@ export class MockAgentEngine {
       qLower.includes("urgent") ||
       qLower.includes("need my attention") ||
       qLower.includes("anything critical") ||
-      qLower.includes("what should i do")
+      qLower.includes("what should i do") ||
+      qLower.includes("take care of")
     ) {
       intent = "ATTENTION_QUERY";
     } else if (
@@ -425,7 +431,7 @@ export class MockAgentEngine {
     ) {
       // Check if asking about specific entity vs general deadlines
       const resolvedEntity = SessionMemory.resolveFollowUpEntity(userQuery, sessionId);
-      if (resolvedEntity && (qLower.includes("it") || qLower.includes("when"))) {
+      if (resolvedEntity && (qLower.includes("it") || qLower.includes("when") || qLower.includes("this") || qLower.includes("that") || qLower.includes("document"))) {
         intent = "FOLLOW_UP_QUERY";
       } else {
         intent = "DEADLINE_QUERY";
@@ -477,73 +483,50 @@ export class MockAgentEngine {
         traceSteps.push({
           id: `trace-2-${Date.now()}`,
           timestamp,
-          step: "Selected Tool: getUrgentItems()",
-          detail: "Querying live workspace store for high-risk documents and urgent tasks",
+          step: "Selected Tool: SmartDecisionEngine",
+          detail: "Evaluating workspace documents, RAG chunks, tasks, and deadlines for decision analysis",
           status: "COMPLETED"
         });
 
-        const urgentData = await agentTools.getUrgentItems(userId);
+        const decisionRes = await globalSmartDecisionEngine.evaluateSmartActions(userId, userQuery);
+
+        if (decisionRes.decision.recommendations.length === 0 && decisionRes.decision.facts.length === 0) {
+          const text = "Your workspace is up to date! You have no urgent tasks, upcoming deadlines, or pending obligations right now.";
+          return {
+            text,
+            traceSteps: [
+              ...traceSteps,
+              {
+                id: `trace-3-${Date.now()}`,
+                timestamp,
+                step: "Retrieved workspace state & structured recommendations",
+                detail: "Clean workspace: 0 urgent items found",
+                status: "COMPLETED"
+              }
+            ],
+            intent,
+            facts: [],
+            recommendations: [],
+            toolsUsed: ["SmartDecisionEngine"]
+          };
+        }
 
         traceSteps.push({
           id: `trace-3-${Date.now()}`,
           timestamp,
-          step: `Retrieved workspace state`,
-          detail: `Found ${urgentData.urgentDocuments.length} urgent document(s), ${urgentData.urgentTasks.length} pending task(s), and ${urgentData.upcomingDeadlines.length} upcoming deadline(s).`,
-          status: "COMPLETED"
-        });
-
-        if (
-          urgentData.urgentDocuments.length === 0 &&
-          urgentData.urgentTasks.length === 0 &&
-          urgentData.upcomingDeadlines.length === 0
-        ) {
-          return {
-            text: "Good news! Everything in your workspace is currently up to date. You have no high-risk documents, pending urgent tasks, or immediate deadlines requiring attention.",
-            traceSteps,
-            intent,
-            toolsUsed: ["getUrgentItems"]
-          };
-        }
-
-        let responseText = `Here is what currently requires your attention in Clarion AI:\n\n`;
-
-        if (urgentData.urgentDocuments.length > 0) {
-          responseText += `🚨 **High-Risk Documents (${urgentData.urgentDocuments.length}):**\n`;
-          urgentData.urgentDocuments.forEach((doc) => {
-            const amountStr = doc.extraction?.totalAmount ? ` ($${doc.extraction.totalAmount.toFixed(2)})` : "";
-            const dueStr = doc.extraction?.dueDate ? ` - Due: ${formatDateForDisplay(doc.extraction.dueDate)}` : "";
-            responseText += `• **${doc.title}** [${doc.category}]${amountStr}${dueStr}\n  *${doc.extraction?.plainLanguageSummary || doc.contentSummary || "Requires review"}*\n\n`;
-          });
-        }
-
-        if (urgentData.urgentTasks.length > 0) {
-          responseText += `📋 **Pending High-Priority Tasks (${urgentData.urgentTasks.length}):**\n`;
-          urgentData.urgentTasks.forEach((t) => {
-            const dueStr = t.dueDate ? ` (Due: ${formatDateForDisplay(t.dueDate)})` : "";
-            responseText += `• **${t.title}**${dueStr}\n`;
-          });
-          responseText += `\n`;
-        }
-
-        if (urgentData.upcomingDeadlines.length > 0) {
-          responseText += `⏰ **Immediate Upcoming Deadlines:**\n`;
-          urgentData.upcomingDeadlines.slice(0, 3).forEach((dl) => {
-            responseText += `• **${dl.title}** - Due: ${formatDateForDisplay(dl.dueDate)} [${dl.severity}]\n`;
-          });
-        }
-
-        traceSteps.push({
-          id: `trace-4-${Date.now()}`,
-          timestamp,
-          step: "Generated natural language synthesis",
+          step: "Retrieved workspace state & structured recommendations",
+          detail: `Found ${decisionRes.decision.recommendations.length} recommendation(s) and ${decisionRes.decision.facts.length} fact(s).`,
           status: "COMPLETED"
         });
 
         return {
-          text: responseText.trim(),
+          text: decisionRes.text,
           traceSteps,
           intent,
-          toolsUsed: ["getUrgentItems"]
+          toolsUsed: decisionRes.toolsUsed,
+          facts: decisionRes.decision.facts,
+          recommendations: decisionRes.decision.recommendations,
+          sources: decisionRes.sources.length > 0 ? decisionRes.sources : undefined
         };
       }
 
@@ -780,9 +763,10 @@ export class MockAgentEngine {
 
       case "DOCUMENT_SPECIFIC":
       case "FOLLOW_UP_QUERY": {
-        const entityQuery = userQuery.includes("electricity") || userQuery.includes("bill") || userQuery.includes("brightgrid")
+        const resolvedFollowUp = SessionMemory.resolveFollowUpEntity(userQuery, sessionId);
+        const entityQuery = (userQuery.includes("electricity") || userQuery.includes("bill") || userQuery.includes("brightgrid"))
           ? "brightgrid"
-          : SessionMemory.resolveFollowUpEntity(userQuery, sessionId) || userQuery;
+          : resolvedFollowUp || userQuery;
 
         traceSteps.push({
           id: `trace-2-${Date.now()}`,
@@ -803,6 +787,8 @@ export class MockAgentEngine {
           };
         }
 
+        console.log(`[MockAgent] FOLLOW_UP_QUERY found doc: "${doc.title}" (dueDate: ${doc.extraction?.dueDate})`);
+
         SessionMemory.updateActiveDocument(sessionId, doc);
 
         traceSteps.push({
@@ -815,7 +801,9 @@ export class MockAgentEngine {
 
         const provider = doc.extraction?.issuer || doc.title;
         const amountStr = doc.extraction?.totalAmount ? `$${doc.extraction.totalAmount.toFixed(2)}` : "None (N/A)";
-        const dueStr = doc.extraction?.dueDate ? formatDateForDisplay(doc.extraction.dueDate) : "No deadline";
+        const dueStr = doc.extraction?.dueDate
+          ? `${formatDateForDisplay(doc.extraction.dueDate)} (${doc.extraction.dueDate})`
+          : "No deadline";
 
         let responseText = `Here are the details for **${doc.title}** (${doc.extraction?.documentType || doc.category}):\n\n`;
         responseText += `• **Provider / Subject:** ${provider}\n`;
@@ -840,12 +828,22 @@ export class MockAgentEngine {
           status: "COMPLETED"
         });
 
+        const docCitation: DocumentSourceCitation = {
+          documentId: doc.id,
+          documentTitle: doc.title,
+          category: doc.category,
+          chunkIndex: 0,
+          snippet: doc.extraction?.plainLanguageSummary || doc.contentSummary || doc.title,
+          similarity: 0.95
+        };
+
         return {
           text: responseText.trim(),
           traceSteps,
           activeEntity: doc.title,
           intent,
-          toolsUsed: ["summarizeDocument"]
+          toolsUsed: ["summarizeDocument"],
+          sources: [docCitation]
         };
       }
 

@@ -70,7 +70,12 @@ export async function POST(request: Request) {
             role: "assistant",
             content: agentResponse.text,
             intent: agentResponse.intent || null,
-            toolsUsedJson: agentResponse.toolsUsed ? JSON.stringify(agentResponse.toolsUsed) : null,
+            toolsUsedJson: JSON.stringify({
+              tools: agentResponse.toolsUsed || [],
+              sources: agentResponse.sources || [],
+              recommendations: agentResponse.recommendations || [],
+              facts: agentResponse.facts || []
+            }),
             pendingActionJson: agentResponse.pendingAction ? JSON.stringify(agentResponse.pendingAction) : null
           }
         });

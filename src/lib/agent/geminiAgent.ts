@@ -1,8 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 import { agentTools } from "./tools";
-import { AgentResponse, AgentTraceStep, IntentType, PendingAction, ActionIntentType, EmailDraft } from "./types";
+import { AgentResponse, AgentTraceStep, IntentType, PendingAction, ActionIntentType, EmailDraft, DocumentSourceCitation } from "./types";
+import { buildUnifiedWorkspaceContext, formatContextForPrompt } from "./contextBuilder";
+import { formatDateForDisplay } from "../dateUtils";
 import { SessionMemory } from "./memory";
 import { clarionStore } from "../store";
+import { VectorSearchResult } from "../rag/search";
+import { globalSmartDecisionEngine } from "./decisionEngine";
 
 const GEMINI_MODEL_NAME = "gemini-3.6-flash";
 
@@ -453,35 +457,115 @@ Would you like me to proceed?`;
       };
     }
 
-    // Fallback Read-Only Queries
-    let retrievedDataStr = "No tool data retrieved.";
+    // RAG & Read-Only Queries Path
+    let retrievedRagChunks: VectorSearchResult[] = [];
+    if (userId) {
+      try {
+        const ragSearchQuery = activeEntity ? `${activeEntity} ${userQuery}` : userQuery;
+        retrievedRagChunks = await agentTools.searchDocumentKnowledge(ragSearchQuery, userId);
+      } catch (ragErr) {
+        console.warn("[GeminiAgent RAG Retrieval Warning]", ragErr);
+      }
+    }
+
     const docs = await agentTools.getDocuments(userId);
     const tasks = await agentTools.getTasks(userId);
     const deadlines = await agentTools.getUpcomingDeadlines(userId);
 
-    retrievedDataStr = JSON.stringify({ docs: docs.slice(0, 3), tasks: tasks.slice(0, 5), deadlines: deadlines.slice(0, 3) });
+    const citations: DocumentSourceCitation[] = retrievedRagChunks.map((chunk) => ({
+      documentId: chunk.documentId,
+      documentTitle: chunk.documentTitle,
+      category: chunk.documentCategory,
+      chunkIndex: chunk.chunkIndex,
+      snippet: chunk.content.length > 180 ? chunk.content.substring(0, 180) + "..." : chunk.content,
+      similarity: chunk.similarity
+    }));
 
-    const finalPrompt = `You are Clarion AI Copilot, a helpful, privacy-first administrative assistant.
+    if (retrievedRagChunks.length > 0) {
+      traceSteps.push({
+        id: `trace-5-rag-${Date.now()}`,
+        timestamp,
+        step: "5. Semantic RAG Vector Retrieval",
+        detail: `Retrieved ${retrievedRagChunks.length} relevant document text chunks via pgvector similarity search`,
+        status: "COMPLETED"
+      });
+    }
+
+    const ragContextText = retrievedRagChunks.length > 0
+      ? retrievedRagChunks
+          .map((c, i) => `[Source ${i + 1}: Document "${c.documentTitle}" (${c.documentCategory}, Chunk #${c.chunkIndex})]\n"${c.content}"`)
+          .join("\n\n")
+      : "No relevant indexed document chunks found.";
+
+    const workspaceOverviewText = JSON.stringify({
+      hasDocuments: docs.length > 0,
+      docCount: docs.length,
+      recentDocTitles: docs.slice(0, 3).map((d) => d.title),
+      pendingTaskTitles: tasks.slice(0, 3).map((t) => t.title),
+      upcomingDeadlines: deadlines.slice(0, 3)
+    });
+
+    const finalPrompt = `You are Clarion AI Copilot, a privacy-first administrative operations assistant.
 
 USER PROMPT: "${userQuery}"
 
-RETRIEVED WORKSPACE DATA:
+RETRIEVED SEMANTIC DOCUMENT CHUNKS (RAG EVIDENCE):
 """
-${retrievedDataStr}
+${ragContextText}
 """
 
-STRICT INSTRUCTIONS:
-1. Greet the user warmly if they introduce themselves or say hello.
-2. Format response cleanly using Markdown (**bold**, bullet points •).
-3. If workspace data was retrieved, use exact facts. Never invent fake dates or amounts.
+SUMMARY WORKSPACE OVERVIEW:
+"""
+${workspaceOverviewText}
+"""
+
+STRICT INSTRUCTIONS FOR EVIDENCE-GROUNDED ANSWERING:
+1. CATEGORY A - DOCUMENT-GROUNDED INFORMATION:
+   If the answer is found in the RETRIEVED SEMANTIC DOCUMENT CHUNKS above, ground your answer directly on those facts and cite the source clearly (e.g. "[Source: Document Title]" or "[Source 1]").
+
+2. CATEGORY B - GENERAL AI KNOWLEDGE:
+   If the query is a general knowledge question or administrative advice not specific to the user's private documents, answer helpfully and clearly indicate that this is general AI knowledge.
+
+3. CATEGORY C - NOT FOUND IN DOCUMENTS:
+   If the user explicitly asks about their documents, bills, contracts, or records, but the relevant information is NOT found in the retrieved document chunks, clearly state: "I searched your indexed documents, but could not find information regarding [topic]."
+
+4. NEVER HALLUCINATE:
+   Do not invent fake document figures, account numbers, or dates. If no indexed documents exist or RAG search returns no results, state what is known accurately.
+
+5. FORMATTING:
+   Format your response cleanly using Markdown (**bold**, bullet points •).
 
 Write your final response:`;
 
-    const finalRes = await ai.models.generateContent({
-      model: GEMINI_MODEL_NAME,
-      contents: finalPrompt,
-      config: { temperature: 0.3 }
-    });
+    let responseText = "I have analyzed your workspace using vector document search.";
+    try {
+      const finalRes = await ai.models.generateContent({
+        model: GEMINI_MODEL_NAME,
+        contents: finalPrompt,
+        config: { temperature: 0.2 }
+      });
+      if (finalRes && finalRes.text) {
+        responseText = finalRes.text.trim();
+      }
+    } catch (genError: any) {
+      console.warn("[GeminiAgent generateContent Notice]", genError?.message || genError);
+      if (targetDoc) {
+        const amountStr = targetDoc.extraction?.totalAmount ? `$${targetDoc.extraction.totalAmount.toFixed(2)}` : "None";
+        const dueStr = targetDoc.extraction?.dueDate ? formatDateForDisplay(targetDoc.extraction.dueDate) : "No deadline";
+        responseText = `Based on your document **${targetDoc.title}**:\n\n• **Amount:** ${amountStr}\n• **Due Date:** ${dueStr}\n\n${targetDoc.extraction?.plainLanguageSummary || targetDoc.contentSummary}`;
+      } else if (retrievedRagChunks.length > 0) {
+        responseText = `Based on your retrieved documents:\n\n• **${retrievedRagChunks[0].documentTitle}**: "${retrievedRagChunks[0].content}"`;
+      } else {
+        responseText = "I analyzed your workspace request. Currently, no specific matching document context was found.";
+      }
+    }
+
+    let decisionResult;
+    if (userId) {
+      try {
+        decisionResult = await globalSmartDecisionEngine.evaluateSmartActions(userId, userQuery);
+      } catch (e) {}
+    }
 
     traceSteps.push({
       id: `trace-7-${Date.now()}`,
@@ -491,11 +575,29 @@ Write your final response:`;
       status: "COMPLETED"
     });
 
+    const toolsUsedList = retrievedRagChunks.length > 0
+      ? ["searchDocumentKnowledge", "getDocuments", "getTasks"]
+      : ["getDocuments", "getTasks"];
+
+    const isActionOrAttentionQuery =
+      qLower.includes("attention") ||
+      qLower.includes("urgent") ||
+      qLower.includes("take care of") ||
+      qLower.includes("what should i do") ||
+      qLower.includes("recommend") ||
+      qLower.includes("suggest") ||
+      qLower.includes("do about");
+
     return {
-      text: (finalRes.text || "I have analyzed your workspace.").trim(),
+      text: responseText,
       traceSteps,
       intent: "GENERAL_HELP",
-      toolsUsed: ["getDocuments", "getTasks"]
+      toolsUsed: toolsUsedList,
+      sources: citations.length > 0 ? citations : undefined,
+      facts: decisionResult?.decision.facts,
+      recommendations: isActionOrAttentionQuery && decisionResult?.decision.recommendations && decisionResult.decision.recommendations.length > 0
+        ? decisionResult.decision.recommendations
+        : undefined
     };
   }
 }

@@ -65,8 +65,17 @@ export class AgentOrchestrator {
 
     const isTaskQuery = qLower.includes("what tasks are pending") || qLower.includes("list my tasks") || qLower.includes("pending tasks") || qLower.includes("show my tasks");
     const isDeadlineQuery = qLower.includes("what deadlines are coming up") || qLower.includes("upcoming deadlines") || qLower.includes("when is due");
-    const isAttentionQuery = qLower.includes("what needs my attention") || qLower.includes("what is urgent") || qLower.includes("anything critical");
+    const isAttentionQuery =
+      qLower.includes("what needs my attention") ||
+      qLower.includes("what is urgent") ||
+      qLower.includes("anything critical") ||
+      qLower.includes("take care of") ||
+      qLower.includes("what should i do") ||
+      qLower.includes("anything urgent");
     const isDocumentQuery = qLower.includes("summarize my recent documents") || qLower.includes("summarize my documents") || qLower.includes("list my documents") || qLower.includes("overview of documents");
+
+    const hasResolvedFollowUp = !!SessionMemory.resolveFollowUpEntity(userMessage, sessionId);
+    const isFollowUpQuery = hasResolvedFollowUp && (qLower.includes("it") || qLower.includes("this") || qLower.includes("that") || qLower.includes("when") || qLower.includes("due") || qLower.includes("document"));
 
     let matchedIntentName = "";
     if (isConfirm) matchedIntentName = "CONFIRM_ACTION";
@@ -76,6 +85,7 @@ export class AgentOrchestrator {
     else if (isCreateReminder) matchedIntentName = "CREATE_REMINDER";
     else if (isDraftEmail) matchedIntentName = "DRAFT_EMAIL";
     else if (isConversational) matchedIntentName = "CONVERSATIONAL";
+    else if (isFollowUpQuery) matchedIntentName = "FOLLOW_UP_QUERY";
     else if (isTaskQuery) matchedIntentName = "TASK_QUERY";
     else if (isDeadlineQuery) matchedIntentName = "DEADLINE_QUERY";
     else if (isAttentionQuery) matchedIntentName = "ATTENTION_QUERY";

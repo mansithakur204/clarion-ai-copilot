@@ -17,13 +17,26 @@ export async function GET() {
     const messages = dbMessages.map((m) => {
       let pendingAction;
       let toolsUsed;
+      let sources;
+      let recommendations;
+      let facts;
 
       try {
         if (m.pendingActionJson) pendingAction = JSON.parse(m.pendingActionJson);
       } catch (e) {}
 
       try {
-        if (m.toolsUsedJson) toolsUsed = JSON.parse(m.toolsUsedJson);
+        if (m.toolsUsedJson) {
+          const parsed = JSON.parse(m.toolsUsedJson);
+          if (Array.isArray(parsed)) {
+            toolsUsed = parsed;
+          } else if (typeof parsed === "object" && parsed !== null) {
+            toolsUsed = parsed.tools;
+            sources = parsed.sources;
+            recommendations = parsed.recommendations;
+            facts = parsed.facts;
+          }
+        }
       } catch (e) {}
 
       return {
@@ -33,7 +46,10 @@ export async function GET() {
         timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         intent: m.intent || undefined,
         toolsUsed,
-        pendingAction
+        pendingAction,
+        sources,
+        recommendations,
+        facts
       };
     });
 

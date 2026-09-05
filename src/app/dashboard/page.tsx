@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import DailyBriefingCard from "@/components/dashboard/DailyBriefingCard";
+import UpcomingObligationsSection from "@/components/dashboard/UpcomingObligationsSection";
 import { AttentionBanner } from "@/components/AttentionBanner";
 import { RiskBadge } from "@/components/RiskBadge";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -103,6 +105,12 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* AI Daily Briefing Section */}
+      <DailyBriefingCard />
+
+      {/* Proactive Deadline & Obligation Intelligence Section */}
+      <UpcomingObligationsSection onActionComplete={fetchDashboardData} />
 
       {/* Immediate Attention Banner */}
       <AttentionBanner documents={documents} tasks={tasks} />

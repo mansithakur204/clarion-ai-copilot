@@ -15,7 +15,9 @@ import {
   Zap,
   ArrowRight
 } from "lucide-react";
-import { AgentMessage, AgentTraceStep } from "@/lib/agent/types";
+import { AgentMessage, AgentTraceStep, SmartRecommendation } from "@/lib/agent/types";
+import RagSourceCitations from "@/components/copilot/RagSourceCitations";
+import SmartActionCard from "@/components/copilot/SmartActionCard";
 
 /**
  * Formats Markdown syntax (**bold**, *italic*, bullets, newlines) into styled React elements.
@@ -100,7 +102,10 @@ export default function CopilotPage() {
             timestamp: m.timestamp,
             intent: m.intent,
             toolsUsed: m.toolsUsed,
-            pendingAction: m.pendingAction
+            pendingAction: m.pendingAction,
+            sources: m.sources,
+            recommendations: m.recommendations,
+            facts: m.facts
           }));
           setMessages(restored);
         } else {
@@ -168,7 +173,10 @@ export default function CopilotPage() {
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           traceSteps: data.response.traceSteps,
           activeEntity: data.response.activeEntity,
-          pendingAction: data.response.pendingAction
+          pendingAction: data.response.pendingAction,
+          sources: data.response.sources,
+          recommendations: data.response.recommendations,
+          facts: data.response.facts
         };
         setMessages((prev) => [...prev, aiMsg]);
         // Automatically expand the trace of the newest response
@@ -209,6 +217,32 @@ export default function CopilotPage() {
 
   const toggleTrace = (id: string) => {
     setExpandedTraceId((prev) => (prev === id ? null : id));
+  };
+
+  const handleActionComplete = (rec: SmartRecommendation, result: any) => {
+    const confirmationMsg: AgentMessage = {
+      id: `ai-confirm-${Date.now()}`,
+      sender: "AI",
+      text: `✅ **Action Confirmed & Executed!**\n\nI have successfully created the task **"${result?.title || rec.actionArgs?.title || rec.title}"** in your workspace tasks. You can view or manage it anytime in your Task Center.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      traceSteps: [
+        {
+          id: `trace-confirm-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          step: "Explicit Human Confirmation Received",
+          detail: `User confirmed action: ${rec.title}`,
+          status: "COMPLETED"
+        },
+        {
+          id: `trace-exec-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          step: "Action Execution Completed",
+          detail: `Created task record (ID: ${result?.id || "N/A"})`,
+          status: "COMPLETED"
+        }
+      ]
+    };
+    setMessages((prev) => [...prev, confirmationMsg]);
   };
 
   return (
@@ -325,6 +359,17 @@ export default function CopilotPage() {
                 </button>
               </div>
             )}
+
+            {/* Smart Action Recommendations Section */}
+            {msg.sender === "AI" && (
+              <SmartActionCard
+                recommendations={msg.recommendations}
+                onActionComplete={handleActionComplete}
+              />
+            )}
+
+            {/* RAG Document Source Citations Section */}
+            {msg.sender === "AI" && <RagSourceCitations sources={msg.sources} />}
 
             {/* Agent Tool Activity Trace Accordion (For AI responses) */}
             {msg.sender === "AI" && msg.traceSteps && msg.traceSteps.length > 0 && (
