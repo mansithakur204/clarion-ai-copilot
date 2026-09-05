@@ -56,23 +56,7 @@ The Copilot can understand a user's documents and workspace, identify obligation
 
 ### User-Scoped RAG
 - Document chunking
-- 768-dimensional embeddings
-- Semantic similarity search
-- Strict `userId` isolation
-- Source citations in Copilot responses
 
-### Agentic Workflow
-
-```text
-User Query
-    ↓
-Intent Detection
-    ↓
-Workspace Context Retrieval
-    ↓
-RAG / Document Search
-    ↓
-Decision & Recommendation Layer
     ↓
 Human Confirmation
     ↓
