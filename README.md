@@ -1,49 +1,81 @@
-# Clarion AI — Autonomous AI Life Admin Copilot
+# 🚀 Clarion AI — Autonomous AI-Life-Admin-Copilot
 
-> Privacy-first AI copilot that turns documents, deadlines, tasks, and obligations into actionable workflows.
+> Privacy-first, proactive administrative assistant for bills, documents, tasks, and deadlines.
 
 ## 🚀 Live Demo
 
-**[Open Clarion AI](https://clarion-ai-copilot.vercel.app)**
+**https://clarion-ai-copilot.vercel.app**
 
 ## 💻 GitHub
 
-**[View Source Code](https://github.com/mansithakur204/clarion-ai-copilot)**
+**https://github.com/mansithakur204/clarion-ai-copilot**
 
-## ✨ What Clarion Does
+## 🎯 What is Clarion AI?
 
-Clarion helps users manage documents, deadlines, tasks, and administrative obligations through AI-powered retrieval, proactive intelligence, and human-confirmed actions.
+Clarion AI turns messy personal documents such as bills, contracts, notices, and leases into structured information, proactive deadline intelligence, grounded answers, and safe human-confirmed actions.
 
-### Key Features
+### Why Clarion AI?
 
-- 📄 Document extraction and structured information
-- 🧠 User-scoped RAG with PostgreSQL + pgvector
-- 🔎 Semantic document search
-- 📚 Source citations for AI answers
-- 🔔 Proactive deadline and obligation intelligence
-- 🤖 Smart recommendations
-- ✅ Human-in-the-loop action confirmation
-- 🧠 Conversation context and follow-up understanding
-- 🛡️ User data isolation
-- 🔄 Gemini fallback/local processing
+- 📄 Document extraction
+- 🔎 User-scoped RAG with source citations
+- 🤖 AI Copilot with conversation memory
+- ⏰ Proactive deadline & obligation intelligence
+- ⚡ Smart recommendations
+- 🛡️ Human-in-the-loop action confirmation
+- 🔐 Strict user data isolation
+- 🔄 Gemini fallback for offline reliability
 
-## 🧠 RAG Architecture
+## ⭐ What Makes It Different?
+
+Clarion is not just a chatbot.
+
+It combines:
+
+**Documents → RAG → Context Memory → Decision Engine → Human Confirmation → Action Execution**
+
+The Copilot can understand a user's documents and workspace, identify obligations, recommend actions, and execute state-changing actions only after explicit user confirmation.
+
+## 🧪 Try the Demo
+
+1. Open the Live Demo.
+2. Create an account.
+3. Upload a bill or document.
+4. Ask the Copilot questions such as:
+   - "What is the total amount due on my electricity bill?"
+   - "When is it due?"
+   - "Who is the provider?"
+   - "What needs my attention?"
+5. Try **Take Action** and confirm/cancel the proposed action.
+
+## 🏗️ Technical Architecture
+
+### Document Intelligence
+- PDF/text document ingestion
+- Structured extraction of issuer, document type, amount, due date, and other fields
+- Deterministic fallback extraction when Gemini is unavailable
+
+### User-Scoped RAG
+- Document chunking
+- 768-dimensional embeddings
+- Semantic similarity search
+- Strict `userId` isolation
+- Source citations in Copilot responses
+
+### Agentic Workflow
 
 ```text
-Document Upload
-      ↓
-Text Extraction
-      ↓
-Chunking
-      ↓
-Gemini Embeddings
-      ↓
-PostgreSQL + pgvector
-      ↓
-Semantic Retrieval
-      ↓
-Relevant Context
-      ↓
-Gemini / Local Agent
-      ↓
-Grounded Answer + Source Citation
+User Query
+    ↓
+Intent Detection
+    ↓
+Workspace Context Retrieval
+    ↓
+RAG / Document Search
+    ↓
+Decision & Recommendation Layer
+    ↓
+Human Confirmation
+    ↓
+Action Execution
+    ↓
+Audit Trail
