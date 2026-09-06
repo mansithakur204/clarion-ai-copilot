@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Sparkles,
   ShieldCheck,
@@ -18,6 +19,30 @@ import {
 } from "lucide-react";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+        }
+      })
+      .catch(() => setIsAuthenticated(false));
+  }, []);
+
+  const handleProtectedAction = (targetPath: string) => {
+    if (isAuthenticated) {
+      router.push(targetPath);
+    } else {
+      router.push(`/login?redirect=${encodeURIComponent(targetPath)}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-clarion-500 selection:text-white">
       {/* Top Navbar */}
@@ -37,20 +62,32 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/dashboard"
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-clarion-600 to-sky-500 hover:from-clarion-500 hover:to-sky-400 text-white font-semibold text-xs sm:text-sm shadow-md shadow-clarion-500/25 transition-all flex items-center gap-1.5"
-            >
-              <span>Launch Application</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+          <div className="flex items-center gap-3 sm:gap-4">
+            {isAuthenticated ? (
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-clarion-600 to-sky-500 hover:from-clarion-500 hover:to-sky-400 text-white font-semibold text-xs sm:text-sm shadow-md shadow-clarion-500/25 transition-all flex items-center gap-1.5"
+              >
+                <span>Go to Dashboard</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/login?redirect=/dashboard"
+                  className="px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-clarion-600 to-sky-500 hover:from-clarion-500 hover:to-sky-400 text-white font-semibold text-xs sm:text-sm shadow-md shadow-clarion-500/25 transition-all flex items-center gap-1.5"
+                >
+                  <span>Launch Application</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -66,8 +103,8 @@ export default function LandingPage() {
             <span>Privacy-First • Human-in-the-Loop Architecture</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
-            Stop drowning in messy <br />
+          <h1 className="text-3xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+            Stop drowning in messy <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-clarion-400 via-sky-300 to-teal-300 bg-clip-text text-transparent">
               bills, notices & contracts
             </span>
@@ -78,21 +115,21 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-            <Link
-              href="/dashboard"
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-clarion-600 via-clarion-500 to-sky-500 hover:from-clarion-500 hover:to-sky-400 text-white font-bold text-base shadow-xl shadow-clarion-500/30 transition-all flex items-center justify-center gap-2 group"
+            <button
+              onClick={() => handleProtectedAction("/dashboard")}
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-clarion-600 via-clarion-500 to-sky-500 hover:from-clarion-500 hover:to-sky-400 text-white font-bold text-base shadow-xl shadow-clarion-500/30 transition-all flex items-center justify-center gap-2 group cursor-pointer"
             >
               <span>Try Clarion Dashboard</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </button>
 
-            <Link
-              href="/dashboard/upload"
-              className="w-full sm:w-auto px-6 py-4 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-200 font-semibold text-base transition-all flex items-center justify-center gap-2"
+            <button
+              onClick={() => handleProtectedAction("/dashboard/upload")}
+              className="w-full sm:w-auto px-6 py-4 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-200 font-semibold text-base transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <FileSearch className="w-5 h-5 text-clarion-400" />
               <span>Test Sample Documents</span>
-            </Link>
+            </button>
           </div>
 
           {/* Key Value Cards */}

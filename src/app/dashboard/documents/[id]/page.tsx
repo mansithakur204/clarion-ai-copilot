@@ -155,7 +155,7 @@ export default function DocumentDetailPage() {
   const extraction = doc.extraction;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 w-full">
       {/* Back button & Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">

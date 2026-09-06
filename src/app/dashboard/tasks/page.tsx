@@ -151,12 +151,12 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <CheckSquare className="w-7 h-7 text-clarion-400" />
+            <CheckSquare className="w-7 h-7 text-clarion-400 shrink-0" />
             <span>Tasks & Administrative Deadlines</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
@@ -164,20 +164,20 @@ export default function TasksPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start sm:self-center">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 self-start sm:self-center">
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2 rounded-xl bg-clarion-600 hover:bg-clarion-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-clarion-600/20"
+            className="px-4 py-2 rounded-xl bg-clarion-600 hover:bg-clarion-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-clarion-600/20 cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>{showAddForm ? "Cancel" : "Add Task"}</span>
           </button>
 
           {/* Filter buttons */}
-          <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-1 sm:gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 overflow-x-auto max-w-full">
             <button
               onClick={() => setFilterStatus("ALL")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 filterStatus === "ALL" ? "bg-clarion-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
@@ -185,7 +185,7 @@ export default function TasksPage() {
             </button>
             <button
               onClick={() => setFilterStatus("PENDING")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 filterStatus === "PENDING" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-white"
               }`}
             >
@@ -193,7 +193,7 @@ export default function TasksPage() {
             </button>
             <button
               onClick={() => setFilterStatus("COMPLETED")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 filterStatus === "COMPLETED" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"
               }`}
             >

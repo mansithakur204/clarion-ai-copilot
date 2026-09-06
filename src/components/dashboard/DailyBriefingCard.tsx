@@ -88,9 +88,9 @@ export default function DailyBriefingCard() {
   }
 
   return (
-    <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-clarion-950/40 border border-slate-800 shadow-xl space-y-5">
+    <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-clarion-950/40 border border-slate-800 shadow-xl space-y-4 sm:space-y-5">
       {/* Header Bar */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-2xl bg-clarion-950 border border-clarion-800/60 flex items-center justify-center shrink-0">
             {getGreetingIcon(briefing.greeting)}

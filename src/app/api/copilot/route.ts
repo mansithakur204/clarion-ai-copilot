@@ -6,6 +6,9 @@ import { getCurrentUser } from "@/lib/auth/auth";
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const { message, sessionId } = body;
 

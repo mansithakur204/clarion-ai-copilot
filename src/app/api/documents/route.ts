@@ -5,7 +5,10 @@ import { getCurrentUser } from "@/lib/auth/auth";
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    const docs = await clarionStore.getDocuments(user?.id);
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    const docs = await clarionStore.getDocuments(user.id);
     return NextResponse.json({ success: true, documents: docs });
   } catch (error: any) {
     return NextResponse.json(
@@ -18,6 +21,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const { title, filename, rawText, category } = body;
 
@@ -33,7 +39,7 @@ export async function POST(request: Request) {
       filename,
       rawText,
       category || "OTHER",
-      user?.id || "demo-user-id"
+      user.id
     );
 
     return NextResponse.json({

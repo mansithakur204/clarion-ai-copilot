@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Sparkles, ShieldCheck, ArrowRight, Mail, Lock, AlertCircle } from "lucide-react";
+import { Sparkles, ShieldCheck, ArrowRight, Mail, Lock, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -12,6 +12,7 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -150,15 +151,23 @@ function LoginForm() {
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-slate-300">Password</label>
           <div className="relative">
-            <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="••••••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-200 focus:outline-none focus:border-clarion-500 transition-colors"
+              className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-200 focus:outline-none focus:border-clarion-500 transition-colors"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1 rounded-lg focus:outline-none"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
@@ -179,7 +188,10 @@ function LoginForm() {
 
         <div className="text-center pt-2">
           <span className="text-xs text-slate-400">Don&apos;t have an account? </span>
-          <Link href="/signup" className="text-xs font-semibold text-clarion-400 hover:text-clarion-300 underline">
+          <Link
+            href={redirectPath !== "/dashboard" ? `/signup?redirect=${encodeURIComponent(redirectPath)}` : "/signup"}
+            className="text-xs font-semibold text-clarion-400 hover:text-clarion-300 underline"
+          >
             Create Account
           </Link>
         </div>
@@ -195,8 +207,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 selection:bg-clarion-500 selection:text-white">
-      <div className="absolute w-[500px] h-[300px] bg-clarion-600/10 blur-[100px] rounded-full pointer-events-none" />
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 selection:bg-clarion-500 selection:text-white relative overflow-hidden">
+      <div className="absolute w-[300px] sm:w-[500px] h-[300px] bg-clarion-600/10 blur-[100px] rounded-full pointer-events-none" />
       <Suspense fallback={<div className="text-white text-xs">Loading login...</div>}>
         <LoginForm />
       </Suspense>

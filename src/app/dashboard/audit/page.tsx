@@ -28,11 +28,11 @@ export default function AuditPage() {
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 w-full">
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          <History className="w-7 h-7 text-clarion-400" />
+          <History className="w-7 h-7 text-clarion-400 shrink-0" />
           <span>Audit Trail & Activity Log</span>
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">

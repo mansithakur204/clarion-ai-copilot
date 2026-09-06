@@ -13,7 +13,11 @@ export function middleware(request: NextRequest) {
     if (token && token.includes(".")) {
       try {
         const [jsonPayload] = token.split(".");
-        const decodedStr = atob(jsonPayload.replace(/-/g, "+").replace(/_/g, "/"));
+        let base64 = jsonPayload.replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) {
+          base64 += "=";
+        }
+        const decodedStr = atob(base64);
         const payload = JSON.parse(decodedStr);
         if (payload.exp && Date.now() < payload.exp && payload.id) {
           isValidSession = true;
@@ -34,5 +38,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"]
+  matcher: ["/dashboard", "/dashboard/:path*"]
 };

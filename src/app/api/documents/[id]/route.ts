@@ -8,7 +8,13 @@ export async function GET(
 ) {
   try {
     const user = await getCurrentUser();
-    const doc = await clarionStore.getDocumentById(params.id, user?.id);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    const doc = await clarionStore.getDocumentById(params.id, user.id);
     if (!doc) {
       return NextResponse.json(
         { success: false, error: "Document not found" },
@@ -30,8 +36,14 @@ export async function PATCH(
 ) {
   try {
     const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
     const body = await request.json();
-    const doc = await clarionStore.verifyExtraction(params.id, body, user?.id);
+    const doc = await clarionStore.verifyExtraction(params.id, body, user.id);
     if (!doc) {
       return NextResponse.json(
         { success: false, error: "Document not found or update failed" },
@@ -53,6 +65,12 @@ export async function POST(
 ) {
   try {
     const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
     const body = await request.json();
     const { title, description, actionType, priority, dueDate } = body;
 
@@ -70,7 +88,7 @@ export async function POST(
       actionType || "GENERAL",
       priority || "MEDIUM",
       dueDate,
-      user?.id
+      user.id
     );
 
     return NextResponse.json({ success: true, task: newTask });

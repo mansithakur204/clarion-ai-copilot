@@ -5,7 +5,10 @@ import { getCurrentUser } from "@/lib/auth/auth";
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    const tasks = await clarionStore.getAllTasks(user?.id);
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    const tasks = await clarionStore.getAllTasks(user.id);
     return NextResponse.json({ success: true, tasks });
   } catch (error: any) {
     return NextResponse.json(
@@ -18,6 +21,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const { title, description, actionType, priority, dueDate, documentId } = body;
 
@@ -35,7 +41,7 @@ export async function POST(request: Request) {
       priority,
       dueDate,
       documentId,
-      userId: user?.id
+      userId: user.id
     });
 
     return NextResponse.json({ success: true, task: newTask });
@@ -50,6 +56,9 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const { taskId } = body;
 

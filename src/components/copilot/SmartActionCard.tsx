@@ -119,7 +119,7 @@ export default function SmartActionCard({
   };
 
   return (
-    <div className="w-full max-w-[85%] mt-2 space-y-3">
+    <div className="w-full max-w-[92%] sm:max-w-[85%] mt-2 space-y-3">
       <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-400">
         <Zap className="w-4 h-4 text-amber-400" />
         <span>Smart Decision & Action Recommendations</span>
